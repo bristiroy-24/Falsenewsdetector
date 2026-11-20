@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fake News Detector</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f1117;
+      --surface:     #1a1d27;
+      --surface-2:   #242736;
+      --accent:      #6c63ff;
+      --accent-glow: rgba(108, 99, 255, 0.35);
+      --fake:        #ff4f4f;
+      --fake-glow:   rgba(255, 79, 79, 0.25);
+      --true:        #22d07a;
+      --true-glow:   rgba(34, 208, 122, 0.25);
+      --text:        #e2e4ef;
+      --muted:       #7b7f9e;
+      --border:      rgba(255,255,255,0.07);
+      --radius:      14px;
+      --transition:  0.25s ease;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 4rem;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--accent);
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 18px var(--accent-glow);
+      font-size: 1.35rem;
+    }
+
+    h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 0.35rem;
+    }
+
+    /* ── Card ─────────────────────────────────────────────────── */
+    .card {
+      width: 100%;
+      max-width: 720px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.55rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      font-size: 0.97rem;
+      line-height: 1.65;
+      resize: vertical;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      font-family: inherit;
+    }
+
+    textarea::placeholder { color: var(--muted); opacity: 0.7; }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* ── Actions ──────────────────────────────────────────────── */
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      padding: 0.7rem 1.5rem;
+      transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+
+    button:active { transform: scale(0.97); }
+
+    #checkBtn {
+      background: var(--accent);
+      color: #fff;
+      flex: 1;
+      box-shadow: 0 4px 18px var(--accent-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-width: 160px;
+    }
+
+    #checkBtn:hover { opacity: 0.88; box-shadow: 0 6px 24px var(--accent-glow); }
+    #checkBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #clearBtn {
+      background: var(--surface-2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    #clearBtn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+
+    /* ── Spinner ──────────────────────────────────────────────── */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Result ───────────────────────────────────────────────── */
+    #result {
+      margin-top: 1.5rem;
+      border-radius: var(--radius);
+      padding: 1.25rem 1.4rem;
+      display: none;
+      align-items: center;
+      gap: 1rem;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0);  }
+    }
+
+    #result.fake {
+      background: rgba(255, 79, 79, 0.1);
+      border: 1px solid rgba(255, 79, 79, 0.35);
+      box-shadow: 0 0 24px var(--fake-glow);
+      display: flex;
+    }
+
+    #result.true {
+      background: rgba(34, 208, 122, 0.1);
+      border: 1px solid rgba(34, 208, 122, 0.35);
+      box-shadow: 0 0 24px var(--true-glow);
+      display: flex;
+    }
+
+    #result.error {
+      background: rgba(255, 170, 0, 0.1);
+      border: 1px solid rgba(255, 170, 0, 0.35);
+      display: flex;
+    }
+
+    .result-icon {
+      font-size: 2rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .result-body { display: flex; flex-direction: column; gap: 0.15rem; }
+
+    .result-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .result-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
+
+    #result.fake  .result-value { color: var(--fake); }
+    #result.true  .result-value { color: var(--true); }
+    #result.error .result-value { color: #ffaa00; }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    footer {
+      margin-top: 2.5rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .card { padding: 1.25rem; }
+      #checkBtn { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🔍</div>
+      <h1>Fake News Detector</h1>
+    </div>
+    <p>Paste a news article below and let the model decide.</p>
+  </header>
+
+  <main class="card">
+    <label for="newsInput">Article text</label>
+    <textarea
+      id="newsInput"
+      placeholder="Paste a news article or headline here…"
+      spellcheck="false"
+    ></textarea>
+
+    <div class="actions">
+      <button id="checkBtn" onclick="checkNews()">
+        <span class="spinner" id="spinner"></span>
+        <span id="btnLabel">Check News</span>
+      </button>
+      <button id="clearBtn" onclick="clearAll()">Clear</button>
+    </div>
+
+    <div id="result" role="status" aria-live="polite">
+      <div class="result-icon" id="resultIcon"></div>
+      <div class="result-body">
+        <span class="result-label">Verdict</span>
+        <span class="result-value" id="resultText"></span>
+      </div>
+    </div>
+  </main>
+
+  <footer>Powered by a TF-IDF + LinearSVC pipeline · FastAPI backend</footer>
+
+  <script>
+    const checkBtn   = document.getElementById('checkBtn');
+    const spinner    = document.getElementById('spinner');
+    const btnLabel   = document.getElementById('btnLabel');
+    const resultBox  = document.getElementById('result');
+    const resultIcon = document.getElementById('resultIcon');
+    const resultText = document.getElementById('resultText');
+    const input      = document.getElementById('newsInput');
+
+    function setLoading(on) {
+      checkBtn.disabled   = on;
+      spinner.style.display = on ? 'block' : 'none';
+      btnLabel.textContent  = on ? 'Analyzing…' : 'Check News';
+    }
+
+    function showResult(type, icon, message) {
+      resultBox.className   = type;          // 'fake' | 'true' | 'error'
+      resultIcon.textContent = icon;
+      resultText.textContent = message;
+      resultBox.style.display = 'flex';
+    }
+
+    function clearAll() {
+      input.value = '';
+      resultBox.style.display = 'none';
+      resultBox.className = '';
+      input.focus();
+    }
+
+    async function checkNews() {
+      const text = input.value.trim();
+
+      if (!text) {
+        input.focus();
+        input.style.borderColor = 'var(--fake)';
+        setTimeout(() => (input.style.borderColor = ''), 1200);
+        return;
+      }
+
+      setLoading(true);
+      resultBox.style.display = 'none';
+
+      try {
+        const response = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const isFake = data.prediction === 'Fake News';
+
+        showResult(
+          isFake ? 'fake' : 'true',
+          isFake ? '🚨' : '✅',
+          data.prediction
+        );
+      } catch (err) {
+        showResult('error', '⚠️', 'Could not reach the server. Is the backend running?');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Allow Ctrl+Enter / Cmd+Enter to submit
+    input.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') checkNews();
+    });
+  </script>
+
+</body>
+</html>
