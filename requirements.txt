@@ -1,10 +1,14 @@
 # FastAPI 0.100.x is the last series before fastapi-cli was added,
 # so it shares the same typer<0.10.0 constraint that spaCy 3.7.x requires.
+# numpy must stay <2.0 — thinc 8.2.x (spaCy 3.7.x dependency) is compiled
+# against numpy 1.x and crashes with the numpy 2.x ABI (dtype size change).
+numpy==1.26.4
+scipy<1.14
 fastapi==0.100.1
 uvicorn[standard]==0.23.2
 python-multipart==0.0.9
 joblib==1.4.2
-scikit-learn==1.4.2
+scikit-learn==1.6.1
 nltk==3.8.1
 spacy==3.7.4
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
